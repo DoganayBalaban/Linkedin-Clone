@@ -16,7 +16,6 @@ export const getSuggestedConnections = async (req, res) => {
     res.status(500).json({ message: "Something went wrong" });
   }
 };
-
 export const getPublicProfile = async (req, res) => {
   try {
     const user = await User.findOne({ username: req.params.username }).select(
@@ -31,7 +30,6 @@ export const getPublicProfile = async (req, res) => {
     res.status(500).json({ message: "Something went wrong" });
   }
 };
-
 export const updateProfile = async (req, res) => {
   try {
     const allowedFields = [
