@@ -71,5 +71,7 @@ export const sendConnectionAcceptedEmail = async (
       ),
       category: "connection_accepted",
     });
-  } catch (error) {}
+  } catch (error) {
+    throw error;
+  }
 };
