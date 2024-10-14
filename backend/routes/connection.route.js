@@ -12,8 +12,8 @@ import {
 } from "../controllers/connection.controller.js";
 
 router.post("/request/:userId", protectRoute, sendConnectionRequest);
-router.put("/accept/:userId", protectRoute, acceptConnectionRequest);
-router.delete("/reject/:userId", protectRoute, rejectConnectionRequest);
+router.put("/accept/:requestId", protectRoute, acceptConnectionRequest);
+router.put("/reject/:requestId", protectRoute, rejectConnectionRequest);
 router.get("/requests", protectRoute, getConnectionRequests);
 router.get("/", protectRoute, getUserConnections);
 router.delete("/:userId", protectRoute, removeConnection);

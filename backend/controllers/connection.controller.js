@@ -1,6 +1,7 @@
 import { sendConnectionAcceptedEmail } from "../emails/emailHandlers.js";
 import ConnectionRequest from "../models/connectionRequest.model.js";
 import User from "../models/user.model.js";
+import Notification from "../models/notification.model.js";
 
 export const sendConnectionRequest = async (req, res) => {
   try {
@@ -36,49 +37,58 @@ export const sendConnectionRequest = async (req, res) => {
   }
 };
 export const acceptConnectionRequest = async (req, res) => {
-  const { requestId } = req.params;
-  const userId = req.user._id;
   try {
+    const { requestId } = req.params;
+    const userId = req.user._id;
+
     const request = await ConnectionRequest.findById(requestId)
       .populate("sender", "name email username")
       .populate("recipient", "name username");
+
     if (!request) {
-      return res.status(404).json({ message: "Request not found" });
+      return res.status(404).json({ message: "Connection request not found" });
     }
-    if (request.recipient.toString() !== userId.toString()) {
+
+    // check if the req is for the current user
+    if (request.recipient._id.toString() !== userId.toString()) {
       return res
         .status(403)
-        .json({ message: "You are not authorized to accept this request" });
+        .json({ message: "Not authorized to accept this request" });
     }
+
     if (request.status !== "pending") {
       return res
         .status(400)
-        .json({ message: "Request has already been accepted/rejected" });
+        .json({ message: "This request has already been processed" });
     }
+
     request.status = "accepted";
     await request.save();
+
+    // if im your friend then ur also my friend ;)
     await User.findByIdAndUpdate(request.sender._id, {
-      $addToSet: {
-        connections: userId,
-      },
+      $addToSet: { connections: userId },
     });
     await User.findByIdAndUpdate(userId, {
-      $addToSet: {
-        connections: request.sender._id,
-      },
+      $addToSet: { connections: request.sender._id },
     });
+
     const notification = new Notification({
       recipient: request.sender._id,
       type: "connectionAccepted",
       relatedUser: userId,
     });
+
     await notification.save();
-    res.status(200).json({ message: "Connection accepted successfully" });
+
+    res.json({ message: "Connection accepted successfully" });
+
     const senderEmail = request.sender.email;
     const senderName = request.sender.name;
     const recipientName = request.recipient.name;
     const profileUrl =
       process.env.CLIENT_URL + "/profile/" + request.recipient.username;
+
     try {
       await sendConnectionAcceptedEmail(
         senderEmail,
@@ -91,9 +101,10 @@ export const acceptConnectionRequest = async (req, res) => {
     }
   } catch (error) {
     console.error("Error in acceptConnectionRequest controller:", error);
-    res.status(500).json({ message: "Something went wrong" });
+    res.status(500).json({ message: "Server error" });
   }
 };
+
 export const rejectConnectionRequest = async (req, res) => {
   const { requestId } = req.params;
   const userId = req.user._id;

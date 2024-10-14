@@ -5,7 +5,9 @@ import { sendCommentNotificationEmail } from "../emails/emailHandlers.js";
 
 export const getFeedPosts = async (req, res) => {
   try {
-    const posts = await Post.find({ author: { $in: req.user.connections } })
+    const posts = await Post.find({
+      author: { $in: [...req.user.connections, req.user._id] },
+    })
       .populate("author", "name username profilePicture headline")
       .populate("comments.user", "name profilePicture")
       .sort({ createdAt: -1 });
@@ -22,13 +24,13 @@ export const createPost = async (req, res) => {
     if (image) {
       const imgResult = await cloudinary.uploader.upload(image);
       newPost = new Post({
-        author: req.user_id,
+        author: req.user._id,
         content,
         image: imgResult.secure_url,
       });
     } else {
       newPost = new Post({
-        author: req.user_id,
+        author: req.user._id,
         content,
       });
     }
@@ -41,7 +43,7 @@ export const createPost = async (req, res) => {
 };
 export const deletePost = async (req, res) => {
   try {
-    const postId = req.params.postId;
+    const postId = req.params.id;
     const userId = req.user._id;
     const post = await Post.findById(postId);
     if (!post) {
@@ -58,7 +60,7 @@ export const deletePost = async (req, res) => {
         post.image.split("/").pop().split(".")[0]
       );
     }
-    await post.remove();
+    await Post.findByIdAndDelete(postId);
     res.status(200).json({ message: "Post deleted successfully" });
   } catch (error) {
     console.error("Error in deletePost controller:", error);
@@ -89,7 +91,7 @@ export const createComment = async (req, res) => {
       { new: true }
     ).populate("author", "name email username headline profilePicture");
     //create a notification if the comment owner is not the post owner
-    if (post.author.toString() !== req.user._id.toString()) {
+    if (post.author._id.toString() !== req.user._id.toString()) {
       const newNotification = new Notification({
         recipient: post.author,
         type: "comment",
@@ -111,6 +113,7 @@ export const createComment = async (req, res) => {
     } catch (error) {
       console.error("Error in sendCommentNotificationEmail:", error);
     }
+
     res.status(201).json(post);
   } catch (error) {
     console.error("Error in createComment controller:", error);
@@ -141,6 +144,8 @@ export const likePost = async (req, res) => {
         await newNotification.save();
       }
     }
+    await post.save();
+    res.status(200).json(post);
   } catch (error) {
     console.error("Error in likePost controller:", error);
     res.status(500).json({ message: "Something went wrong" });

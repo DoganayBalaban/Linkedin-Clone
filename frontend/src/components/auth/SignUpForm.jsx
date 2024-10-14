@@ -65,7 +65,7 @@ const SignUpForm = () => {
       />
 
       <input
-        type="text"
+        type="password"
         placeholder="Password"
         value={password}
         onChange={(e) => {
